@@ -26,7 +26,7 @@ class XMLY:
         self.album_url = url
 
         self.spider = Spider('XMLY')
-        self.spider.set_proxy('proxy-amer.delphiauto.net:8080', 'rzfwch', '8ik,.lo9')
+        self.spider.set_proxy('', '', '')
         self.spider.add_callbacks(self.callbacks)
         self.spider.add_urls([self.album_url])
         self.spider.start()
