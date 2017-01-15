@@ -1,10 +1,9 @@
-import sys, json, traceback
+import sys, json, traceback, os
 from bs4 import BeautifulSoup
 from datetime import *
-from urlparse import urlparse
+from urlparse import urlsplit
 
-from pyvin.spider import Spider, Persist, SpiderSoup
-from pyvin.core import Log
+from pyvin.spider import Spider
 
 class XMLY:
     '''
@@ -17,18 +16,24 @@ class XMLY:
     def __init__(self, url):
         self.TAG = XMLY.__name__
 
+        self.starts = [
+            url,
+        ]
+
         self.callbacks = {
                 '^http://www.ximalaya.com/[0-9]{1,8}/album/[0-9]{1,7}': self.find_sound_list,
                 '^http://www.ximalaya.com/[0-9]{1,8}/sound/[0-9]{1,8}': self.find_sound_url,
                 '^http://www.ximalaya.com/tracks/[0-9]{1,8}.json':self.find_sound_url_json
         }
 
-        self.album_url = url
-
         self.spider = Spider('XMLY')
-        self.spider.set_proxy('', '', '')
+        # self.spider.set_proxy('server:8080', 'user', 'password')
         self.spider.add_callbacks(self.callbacks)
-        self.spider.add_urls([self.album_url])
+        self.spider.add_urls(self.starts)
+        self.spider.set_max_thread(10)
+        # self.spider.start()
+
+    def start(self):
         self.spider.start()
 
     def find_sound_list(self, url, response):
@@ -59,11 +64,25 @@ class XMLY:
 
     def find_sound_url_json(self, url, response):
         '''http://www.ximalaya.com/tracks/27570896.json'''
-        track_obj = json.loads(response)
-        print track_obj['play_path']
-        self.spider.fetch.wget(track_obj['play_path'], track_obj['title'])
+        try:
+            track_obj = json.loads(response)
+            url = track_obj['play_path']
+            title = track_obj['title']
+            album = track_obj['album_title']
+            self.download(url, title, album)
+        except:
+            traceback.print_exc()
+
+    def download(self, url, track_name, album_name):
+        scheme, netloc, path, query, fragment = urlsplit(url)
+        filename = os.path.basename(path)
+        filename, extname = os.path.splitext(filename)
+        path = os.path.join(album_name, '%s%s' % (track_name, extname))
+        self.spider.download(url, path)
 
 if __name__ == "__main__":
-    # print sys.argv[1]
-    url = sys.argv[1]
-    xmly = XMLY(url)
+    if len(sys.argv) > 1:
+        xmly = XMLY(sys.argv[1])
+        xmly.start()
+    else:
+        print '%s album_url' % sys.argv[0]
